@@ -7,11 +7,16 @@ PREFIX = /usr/local
 prog: $(OBJ)
 	$(CC) $(CFLAGS) $(OBJ) -o $(BIN)
 
-debug: CFLAGS += -DDEBUG -g -fsanitize=address -fsanitize=leak
+debug: CFLAGS += -DDEBUG
 debug: prog
 
 %.o: %.c
 	$(CC) $(INCLUDE) $(CFLAGS) -c $<
+
+${OBJ}: config.h
+
+config.h:
+	cp config.def.h $@
 
 clean:
 	rm *.o
@@ -27,4 +32,4 @@ uninstall:
 	rm -f ${PREFIX}/bin/dwmstatus
 
 
-.PHONY: clean
+.PHONY: clean install uninstall
