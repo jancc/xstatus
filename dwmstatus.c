@@ -5,19 +5,23 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <signal.h>
+#include <X11/Xlib.h>
 
 #include "config.h"
 
-const size_t blockc = sizeof(blockTypes) / sizeof(enum BlockType);
+static char status[STATUS_SIZE];
+static char status_tmp[STATUS_TMP_SIZE];
 
-char status[STATUS_SIZE];
-char status_tmp[STATUS_TMP_SIZE];
+static Display * dpy;
+static int screen;
+static Window root;
 
 void print() {
 #ifdef DEBUG
     puts(status);
 #else
-    if(fork() == 0) execlp("xsetroot", "xsetroot", "-name", status, NULL);
+    XStoreName(dpy, root, status);
+    XFlush(dpy);
 #endif
 }
 
@@ -81,6 +85,10 @@ void update() {
 }
 
 int main() {
+    dpy = XOpenDisplay(NULL);
+    screen = DefaultScreen(dpy);
+    root = RootWindow(dpy, screen);
+
     while(1) {
         update();
         print();
