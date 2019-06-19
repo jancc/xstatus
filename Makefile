@@ -1,5 +1,7 @@
+VERSION = 0.1.1
+
 CC = gcc
-CFLAGS = -std=c11 -Wall -Wextra
+CFLAGS = -std=c11 -Wall -Wextra -DVERSION=\"${VERSION}\"
 X11INC = /usr/X11R6/include
 X11LIB = /usr/X11R6/lib
 LIBS = -L${X11LIB} -lX11

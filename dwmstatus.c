@@ -25,6 +25,11 @@ void print() {
 #endif
 }
 
+void error(const char * err) {
+    fputs(err, stderr);
+    exit(EXIT_FAILURE);
+}
+
 void update_tag(char * dst) {
     strncpy(dst, TAG, BLOCK_SIZE);
 }
@@ -34,15 +39,18 @@ void update_battery(char * dst) {
     int cur, max;
     FILE * fp;
 
-    fp = fopen(BATTERY_NOW, "r");
+    if((fp = fopen(BATTERY_NOW, "r")) == NULL) 
+        error("failed to read current battery state");
     fread(buf_cur, 32, 1, fp);
     fclose(fp);
 
-    fp = fopen(BATTERY_FULL, "r");
+    if((fp = fopen(BATTERY_FULL, "r")) == NULL)
+        error("failed to read max battery state");
     fread(buf_max, 32, 1, fp);
     fclose(fp);
 
-    fp = fopen(BATTERY_STATUS, "r");
+    if((fp = fopen(BATTERY_STATUS, "r")) == NULL)
+        error("failed to read battery status");
     fread(buf_status, 1, 1, fp);
     fclose(fp);
 
@@ -84,8 +92,21 @@ void update() {
     }
 }
 
-int main() {
-    dpy = XOpenDisplay(NULL);
+void print_version() {
+    printf("dwmstatus %s\n", VERSION);
+    puts("  simple status bar helper for dwm");
+    puts("  (c) 2019 Jan Wolff");
+    exit(EXIT_SUCCESS);
+}
+
+int main(int argc, char * argv[]) {
+    for(int i = 0; i < argc; i++) {
+        if(strcmp(argv[i], "-v") == 0) print_version();
+        else if(strcmp(argv[i], "--version") == 0) print_version();
+    }
+
+    if((dpy = XOpenDisplay(NULL)) == NULL)
+        error("failed to open X display");
     screen = DefaultScreen(dpy);
     root = RootWindow(dpy, screen);
 
