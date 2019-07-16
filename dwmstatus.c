@@ -12,22 +12,28 @@
 static char status[STATUS_SIZE];
 static char status_tmp[STATUS_TMP_SIZE];
 
-static Display * dpy;
-static int screen;
-static Window root;
+void error(const char * err) {
+    fputs(err, stderr);
+    exit(EXIT_FAILURE);
+}
 
 void print() {
 #ifdef DEBUG
     puts(status);
 #else
+    Display * dpy;
+    int screen;
+    Window root;
+
+    if((dpy = XOpenDisplay(NULL)) == NULL)
+        error("failed to open X display");
+    screen = DefaultScreen(dpy);
+    root = RootWindow(dpy, screen);
+
     XStoreName(dpy, root, status);
     XFlush(dpy);
+    XCloseDisplay(dpy);
 #endif
-}
-
-void error(const char * err) {
-    fputs(err, stderr);
-    exit(EXIT_FAILURE);
 }
 
 void update_tag(char * dst) {
@@ -104,11 +110,6 @@ int main(int argc, char * argv[]) {
         if(strcmp(argv[i], "-v") == 0) print_version();
         else if(strcmp(argv[i], "--version") == 0) print_version();
     }
-
-    if((dpy = XOpenDisplay(NULL)) == NULL)
-        error("failed to open X display");
-    screen = DefaultScreen(dpy);
-    root = RootWindow(dpy, screen);
 
     while(1) {
         update();
