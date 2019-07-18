@@ -8,15 +8,17 @@ static const unsigned interval = 60;
 // format of the clock string
 static const char * clock_fmt = "%F %H:%M";
 
+// battery files
 static const char * battery_now = "/sys/class/power_supply/BAT1/charge_now";
 static const char * battery_full = "/sys/class/power_supply/BAT1/charge_full";
 static const char * battery_status = "/sys/class/power_supply/BAT1/status";
 
-enum BlockType {B_TAG, B_CLOCK, B_BATTERY};
+// uptime file
+static const char * uptime_fname = "/proc/uptime";
 
 // amount of different blocks
 enum BlockType blockTypes[] = {
-    B_TAG,
     B_BATTERY,
-    B_CLOCK
+    B_UPTIME,
+    B_CLOCK,
 };

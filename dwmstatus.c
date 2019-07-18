@@ -7,6 +7,8 @@
 #include <signal.h>
 #include <X11/Xlib.h>
 
+enum BlockType {B_TAG, B_CLOCK, B_BATTERY, B_UPTIME};
+
 #include "config.h"
 
 static unsigned block_count;
@@ -73,6 +75,27 @@ void update_clock(char * dst) {
     strftime(dst, BLOCK_SIZE, clock_fmt, localtime(&t));
 }
 
+void update_uptime(char * dst) {
+    char buf[32];
+    float uptime;
+    int uptime_m, uptime_h;
+    FILE * fp;
+
+    if((fp = fopen(uptime_fname, "r")) == NULL)
+        error("failed to read current uptime state");
+    fread(buf, 32, 1, fp);
+    fclose(fp);
+
+    uptime = atof(buf);
+    uptime_m = ((int)uptime / 60) % 60;
+    uptime_h = (int)uptime / (60 * 60);
+
+    if(uptime_h == 0)
+        snprintf(dst, BLOCK_SIZE, "UP %dm", uptime_m);
+    else
+        snprintf(dst, BLOCK_SIZE, "UP %dm %dh", uptime_m, uptime_h);
+}
+
 void update() {
     char block[BLOCK_SIZE];
     status[0] = '\0';
@@ -87,6 +110,9 @@ void update() {
             break;
         case B_BATTERY:
             update_battery(block);
+            break;
+        case B_UPTIME:
+            update_uptime(block);
             break;
         }
 
