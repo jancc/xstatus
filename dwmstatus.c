@@ -9,8 +9,10 @@
 
 #include "config.h"
 
-static char status[STATUS_SIZE];
-static char status_tmp[STATUS_TMP_SIZE];
+static unsigned block_count;
+static unsigned status_size;
+static char * status;
+static char * status_tmp;
 
 void error(const char * err) {
     fputs(err, stderr);
@@ -37,7 +39,7 @@ void print() {
 }
 
 void update_tag(char * dst) {
-    strncpy(dst, TAG, BLOCK_SIZE);
+    strncpy(dst, tag, BLOCK_SIZE);
 }
 
 void update_battery(char * dst) {
@@ -45,17 +47,17 @@ void update_battery(char * dst) {
     int cur, max;
     FILE * fp;
 
-    if((fp = fopen(BATTERY_NOW, "r")) == NULL) 
+    if((fp = fopen(battery_now, "r")) == NULL)
         error("failed to read current battery state");
     fread(buf_cur, 32, 1, fp);
     fclose(fp);
 
-    if((fp = fopen(BATTERY_FULL, "r")) == NULL)
+    if((fp = fopen(battery_full, "r")) == NULL)
         error("failed to read max battery state");
     fread(buf_max, 32, 1, fp);
     fclose(fp);
 
-    if((fp = fopen(BATTERY_STATUS, "r")) == NULL)
+    if((fp = fopen(battery_status, "r")) == NULL)
         error("failed to read battery status");
     fread(buf_status, 1, 1, fp);
     fclose(fp);
@@ -68,15 +70,14 @@ void update_battery(char * dst) {
 
 void update_clock(char * dst) {
     time_t t = time(NULL);
-    struct tm * tm = localtime(&t);
-    strftime(dst, BLOCK_SIZE, CLOCK_FORMAT, tm);
+    strftime(dst, BLOCK_SIZE, clock_fmt, localtime(&t));
 }
 
 void update() {
     char block[BLOCK_SIZE];
     status[0] = '\0';
 
-    for(size_t i = 0; i < BLOCK_COUNT; i++) {
+    for(size_t i = 0; i < block_count; i++) {
         switch(blockTypes[i]) {
         case B_TAG:
             update_tag(block);
@@ -92,8 +93,8 @@ void update() {
         if(i == 0) {
             strncpy(status, block, BLOCK_SIZE);
         } else {
-            strncpy(status_tmp, status, STATUS_SIZE);
-            snprintf(status, STATUS_SIZE, "%s | %s", status_tmp, block);
+            strncpy(status_tmp, status, status_size);
+            snprintf(status, status_size, "%s | %s", status_tmp, block);
         }
     }
 }
@@ -111,9 +112,17 @@ int main(int argc, char * argv[]) {
         else if(strcmp(argv[i], "--version") == 0) print_version();
     }
 
+    block_count = sizeof(blockTypes) / sizeof(enum BlockType);
+    status_size = (block_count + 1) * BLOCK_SIZE;
+    status = malloc(sizeof(char) * status_size);
+    status_tmp = malloc(sizeof(char) * status_size);
+
     while(1) {
         update();
         print();
-        sleep(INTERVAL);
+        sleep(interval);
     }
+
+    free(status);
+    free(status_tmp);
 }

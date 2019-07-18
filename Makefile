@@ -1,4 +1,4 @@
-VERSION = 0.1.2
+VERSION = 0.2.0-pre
 
 CC = gcc
 CFLAGS = -std=c11 -Wall -Wextra -DVERSION=\"${VERSION}\"
@@ -13,7 +13,7 @@ PREFIX = /usr/local
 prog: $(OBJ)
 	$(CC) $(CFLAGS) $(LIBS) $(INCLUDE) $(OBJ) -o $(BIN)
 
-debug: CFLAGS += -DDEBUG
+debug: CFLAGS += -DDEBUG -g
 debug: prog
 
 %.o: %.c
