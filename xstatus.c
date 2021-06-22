@@ -1,3 +1,4 @@
+#include "xstatus.h"
 #include <X11/Xlib.h>
 #include <signal.h>
 #include <stdio.h>
@@ -7,9 +8,14 @@
 #include <time.h>
 #include <unistd.h>
 
-enum BlockType { B_TAG, B_CLOCK, B_BATTERY, B_UPTIME };
-
 #include "config.h"
+
+static void (*funcs[])(char*) = {
+    [B_TAG] = update_tag,
+    [B_CLOCK] = update_clock,
+    [B_BATTERY] = update_battery,
+    [B_UPTIME] = update_uptime,
+};
 
 static unsigned block_count;
 static unsigned status_size;
@@ -44,6 +50,13 @@ void print()
 
 void update_tag(char* dst) { strncpy(dst, tag, BLOCK_SIZE); }
 
+void update_clock(char* dst)
+{
+    time_t t = time(NULL);
+    strftime(dst, BLOCK_SIZE, clock_fmt[clock_string], localtime(&t));
+    clock_string = (clock_string + 1) % (sizeof(clock_fmt) / sizeof(char*));
+}
+
 void update_battery(char* dst)
 {
     char buf_cur[32], buf_max[32], buf_status[1];
@@ -68,14 +81,7 @@ void update_battery(char* dst)
     cur = atoi(buf_cur);
     max = atoi(buf_max);
 
-    snprintf(dst, BLOCK_SIZE, "%i%% %c", cur * 100 / max, buf_status[0]);
-}
-
-void update_clock(char* dst)
-{
-    time_t t = time(NULL);
-    strftime(dst, BLOCK_SIZE, clock_fmt[clock_string], localtime(&t));
-    clock_string = (clock_string + 1) % (sizeof(clock_fmt) / sizeof(char*));
+    sprintf(dst, "%i%% %c", cur * 100 / max, buf_status[0]);
 }
 
 void update_uptime(char* dst)
@@ -85,8 +91,10 @@ void update_uptime(char* dst)
     int uptime_m, uptime_h;
     FILE* fp;
 
-    if ((fp = fopen(uptime_fname, "r")) == NULL)
+    if ((fp = fopen(uptime_fname, "r")) == NULL) {
         error("failed to read current uptime state");
+    }
+
     fread(buf, 32, 1, fp);
     fclose(fp);
 
@@ -95,38 +103,26 @@ void update_uptime(char* dst)
     uptime_h = (int)uptime / (60 * 60);
 
     if (uptime_h == 0) {
-        snprintf(dst, BLOCK_SIZE, "UP %dm", uptime_m);
+        sprintf(dst, "UP %dm", uptime_m);
     } else {
-        snprintf(dst, BLOCK_SIZE, "UP %dh %dm", uptime_h, uptime_m);
+        sprintf(dst, "UP %dh %dm", uptime_h, uptime_m);
     }
 }
 
 void update()
 {
+    size_t i;
     char block[BLOCK_SIZE];
     status[0] = '\0';
 
-    for (size_t i = 0; i < block_count; i++) {
-        switch (blockTypes[i]) {
-        case B_TAG:
-            update_tag(block);
-            break;
-        case B_CLOCK:
-            update_clock(block);
-            break;
-        case B_BATTERY:
-            update_battery(block);
-            break;
-        case B_UPTIME:
-            update_uptime(block);
-            break;
-        }
+    for (i = 0; i < block_count; i++) {
+        funcs[blockTypes[i]](block);
 
         if (i == 0) {
             strncpy(status, block, BLOCK_SIZE);
         } else {
             strncpy(status_tmp, status, status_size);
-            snprintf(status, status_size, "%s | %s", status_tmp, block);
+            sprintf(status, "%s | %s", status_tmp, block);
         }
     }
 }
@@ -141,11 +137,12 @@ void print_version()
 
 int main(int argc, char* argv[])
 {
-    for (int i = 0; i < argc; i++) {
-        if (strcmp(argv[i], "-v") == 0)
+    int i;
+
+    for (i = 0; i < argc; i++) {
+        if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
             print_version();
-        else if (strcmp(argv[i], "--version") == 0)
-            print_version();
+        }
     }
 
     block_count = sizeof(blockTypes) / sizeof(enum BlockType);
