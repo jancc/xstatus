@@ -6,8 +6,8 @@ X11INC = /usr/X11R6/include
 X11LIB = /usr/X11R6/lib
 LIBS = -L${X11LIB} -lX11
 INCLUDE = -I${X11INC}
-OBJ = dwmstatus.o
-BIN = dwmstatus
+OBJ = xstatus.o
+BIN = xstatus
 PREFIX = /usr/local
 
 prog: $(OBJ)
@@ -31,11 +31,13 @@ clean:
 
 install: prog
 	mkdir -p ${PREFIX}/bin
-	cp -f dwmstatus ${PREFIX}/bin
-	chmod 755 ${PREFIX}/bin/dwmstatus
+	cp -f xstatus ${PREFIX}/bin
+	chmod 755 ${PREFIX}/bin/xstatus
 
 uninstall:
-	rm -f ${PREFIX}/bin/dwmstatus
+	rm -f ${PREFIX}/bin/xstatus
 
+format:
+	clang-format -i *.c *.h
 
-.PHONY: clean install uninstall
+.PHONY: clean install uninstall format

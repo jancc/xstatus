@@ -1,36 +1,38 @@
-#include <time.h>
+#include <X11/Xlib.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
-#include <signal.h>
-#include <X11/Xlib.h>
 
-enum BlockType {B_TAG, B_CLOCK, B_BATTERY, B_UPTIME};
+enum BlockType { B_TAG, B_CLOCK, B_BATTERY, B_UPTIME };
 
 #include "config.h"
 
 static unsigned block_count;
 static unsigned status_size;
-static char * status;
-static char * status_tmp;
+static char* status;
+static char* status_tmp;
+static unsigned clock_string;
 
-void error(const char * err) {
+void error(const char* err)
+{
     fputs(err, stderr);
     exit(EXIT_FAILURE);
 }
 
-void print() {
+void print()
+{
 #ifdef DEBUG
     puts(status);
 #else
-    Display * dpy;
+    Display* dpy;
     int screen;
     Window root;
 
-    if((dpy = XOpenDisplay(NULL)) == NULL)
-        error("failed to open X display");
+    if ((dpy = XOpenDisplay(NULL)) == NULL) error("failed to open X display");
     screen = DefaultScreen(dpy);
     root = RootWindow(dpy, screen);
 
@@ -40,26 +42,25 @@ void print() {
 #endif
 }
 
-void update_tag(char * dst) {
-    strncpy(dst, tag, BLOCK_SIZE);
-}
+void update_tag(char* dst) { strncpy(dst, tag, BLOCK_SIZE); }
 
-void update_battery(char * dst) {
+void update_battery(char* dst)
+{
     char buf_cur[32], buf_max[32], buf_status[1];
     int cur, max;
-    FILE * fp;
+    FILE* fp;
 
-    if((fp = fopen(battery_now, "r")) == NULL)
+    if ((fp = fopen(battery_now, "r")) == NULL)
         error("failed to read current battery state");
     fread(buf_cur, 32, 1, fp);
     fclose(fp);
 
-    if((fp = fopen(battery_full, "r")) == NULL)
+    if ((fp = fopen(battery_full, "r")) == NULL)
         error("failed to read max battery state");
     fread(buf_max, 32, 1, fp);
     fclose(fp);
 
-    if((fp = fopen(battery_status, "r")) == NULL)
+    if ((fp = fopen(battery_status, "r")) == NULL)
         error("failed to read battery status");
     fread(buf_status, 1, 1, fp);
     fclose(fp);
@@ -70,18 +71,21 @@ void update_battery(char * dst) {
     snprintf(dst, BLOCK_SIZE, "%i%% %c", cur * 100 / max, buf_status[0]);
 }
 
-void update_clock(char * dst) {
+void update_clock(char* dst)
+{
     time_t t = time(NULL);
-    strftime(dst, BLOCK_SIZE, clock_fmt, localtime(&t));
+    strftime(dst, BLOCK_SIZE, clock_fmt[clock_string], localtime(&t));
+    clock_string = (clock_string + 1) % (sizeof(clock_fmt) / sizeof(char*));
 }
 
-void update_uptime(char * dst) {
+void update_uptime(char* dst)
+{
     char buf[32];
     float uptime;
     int uptime_m, uptime_h;
-    FILE * fp;
+    FILE* fp;
 
-    if((fp = fopen(uptime_fname, "r")) == NULL)
+    if ((fp = fopen(uptime_fname, "r")) == NULL)
         error("failed to read current uptime state");
     fread(buf, 32, 1, fp);
     fclose(fp);
@@ -90,18 +94,20 @@ void update_uptime(char * dst) {
     uptime_m = ((int)uptime / 60) % 60;
     uptime_h = (int)uptime / (60 * 60);
 
-    if(uptime_h == 0)
+    if (uptime_h == 0) {
         snprintf(dst, BLOCK_SIZE, "UP %dm", uptime_m);
-    else
-        snprintf(dst, BLOCK_SIZE, "UP %dm %dh", uptime_m, uptime_h);
+    } else {
+        snprintf(dst, BLOCK_SIZE, "UP %dh %dm", uptime_h, uptime_m);
+    }
 }
 
-void update() {
+void update()
+{
     char block[BLOCK_SIZE];
     status[0] = '\0';
 
-    for(size_t i = 0; i < block_count; i++) {
-        switch(blockTypes[i]) {
+    for (size_t i = 0; i < block_count; i++) {
+        switch (blockTypes[i]) {
         case B_TAG:
             update_tag(block);
             break;
@@ -116,7 +122,7 @@ void update() {
             break;
         }
 
-        if(i == 0) {
+        if (i == 0) {
             strncpy(status, block, BLOCK_SIZE);
         } else {
             strncpy(status_tmp, status, status_size);
@@ -125,17 +131,21 @@ void update() {
     }
 }
 
-void print_version() {
-    printf("dwmstatus %s\n", VERSION);
-    puts("  simple status bar helper for dwm");
-    puts("  (c) 2019 Jan Wolff");
+void print_version()
+{
+    printf("xstatus %s\n", VERSION);
+    puts("  simple status bar helper for simple x11 window managers");
+    puts("  (c) 2019-2021 Jan Wolff");
     exit(EXIT_SUCCESS);
 }
 
-int main(int argc, char * argv[]) {
-    for(int i = 0; i < argc; i++) {
-        if(strcmp(argv[i], "-v") == 0) print_version();
-        else if(strcmp(argv[i], "--version") == 0) print_version();
+int main(int argc, char* argv[])
+{
+    for (int i = 0; i < argc; i++) {
+        if (strcmp(argv[i], "-v") == 0)
+            print_version();
+        else if (strcmp(argv[i], "--version") == 0)
+            print_version();
     }
 
     block_count = sizeof(blockTypes) / sizeof(enum BlockType);
@@ -143,7 +153,7 @@ int main(int argc, char * argv[]) {
     status = malloc(sizeof(char) * status_size);
     status_tmp = malloc(sizeof(char) * status_size);
 
-    while(1) {
+    while (1) {
         update();
         print();
         sleep(interval);

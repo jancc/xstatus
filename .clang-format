@@ -1,0 +1,10 @@
+# Linux-like style
+BasedOnStyle: LLVM
+IndentWidth: 4
+UseTab: Never
+BreakBeforeBraces: Linux
+AllowShortIfStatementsOnASingleLine: true
+IndentCaseLabels: false
+# Force pointers to the type
+DerivePointerAlignment: false
+PointerAlignment: Left
